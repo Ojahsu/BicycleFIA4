@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bike Snake</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+
+      :root {
+        --bg: #0a0e14;
+        --neon: #00c8ff;
+        --neon2: #00ffb0;
+        --danger: #ff4060;
+        --ui-bg: rgba(10, 14, 20, 0.85);
+        --text: #c8e8f0;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        overflow: hidden;
+        font-family: 'Rajdhani', sans-serif;
+        color: var(--text);
+      }
+
+      canvas { display: block; }
+
+      /* ── HUD principal ─────────────────────────────────────────────────── */
+      #hud {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      #topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 24px;
+        background: linear-gradient(to bottom, rgba(10,14,20,0.95), transparent);
+      }
+
+      .hud-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .hud-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: var(--neon);
+        opacity: 0.6;
+        text-transform: uppercase;
+      }
+
+      .hud-value {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--neon);
+        text-shadow: 0 0 12px var(--neon);
+        line-height: 1;
+      }
+
+      .hud-unit {
+        font-size: 11px;
+        opacity: 0.5;
+      }
+
+      #score-display {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 42px;
+        color: var(--neon2);
+        text-shadow: 0 0 20px var(--neon2);
+        line-height: 1;
+      }
+
+      #score-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 3px;
+        color: var(--neon2);
+        opacity: 0.6;
+        text-align: center;
+      }
+
+      /* ── High Score ────────────────────────────────────────────────────── */
+      #highscore-panel {
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        pointer-events: none;
+        text-align: center;
+      }
+
+      #high-score-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 3px;
+        color: var(--neon);
+        opacity: 0.5;
+        text-transform: uppercase;
+      }
+
+      #high-score-display {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 20px;
+        color: var(--neon);
+        text-shadow: 0 0 12px var(--neon);
+        line-height: 1;
+      }
+
+      /* ── Heartbeat panel (coin bas-gauche) ─────────────────────────────── */
+      #heart-panel {
+        position: absolute;
+        bottom: 64px;
+        left: 20px;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        background: rgba(10,14,20,0.80);
+        border: 1px solid rgba(255, 80, 120, 0.35);
+        border-radius: 12px;
+        padding: 10px 16px;
+      }
+
+      #heart-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 2px;
+        color: #ff6080;
+        opacity: 0.7;
+        text-transform: uppercase;
+      }
+
+      #heart-icon {
+        font-size: 22px;
+        line-height: 1;
+        /* animation déclenchée par JS */
+        display: inline-block;
+      }
+
+      #heart-value {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 26px;
+        color: #ff4060;
+        text-shadow: 0 0 14px #ff4060;
+        line-height: 1;
+      }
+
+      #heart-unit {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 10px;
+        color: #ff6080;
+        opacity: 0.55;
+        letter-spacing: 1px;
+      }
+
+      @keyframes heartBeat {
+        0%   { transform: scale(1); }
+        25%  { transform: scale(1.4); }
+        50%  { transform: scale(1); }
+        75%  { transform: scale(1.2); }
+        100% { transform: scale(1); }
+      }
+
+      .beating {
+        animation: heartBeat 0.4s ease;
+      }
+
+      /* ── Trail bar ─────────────────────────────────────────────────────── */
+      #trail-bar {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 6px;
+        pointer-events: none;
+      }
+
+      .trail-dot {
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: var(--neon2);
+        box-shadow: 0 0 8px var(--neon2);
+        opacity: 0.85;
+      }
+
+      /* ── Malus indicator ───────────────────────────────────────────────── */
+      #malus-bar {
+        position: absolute;
+        top: 80px;
+        right: 20px;
+        pointer-events: none;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        background: rgba(10,14,20,0.85);
+        border: 1px solid rgba(255,128,0,0.5);
+        border-radius: 10px;
+        padding: 8px 14px;
+      }
+
+      #malus-bar.active { display: flex; }
+
+      #malus-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 2px;
+        color: #ff8000;
+        text-transform: uppercase;
+      }
+
+      #malus-icon { font-size: 20px; line-height: 1; }
+
+      #malus-progress-wrap {
+        width: 80px;
+        height: 5px;
+        background: rgba(255,128,0,0.2);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      #malus-progress {
+        height: 100%;
+        background: #ff8000;
+        box-shadow: 0 0 8px #ff8000;
+        border-radius: 3px;
+        transition: width 0.05s linear;
+      }
+
+      /* ── Controls ──────────────────────────────────────────────────────── */
+      #controls {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: var(--ui-bg);
+        border: 1px solid rgba(0,200,255,0.2);
+        border-radius: 10px;
+        padding: 12px 16px;
+        z-index: 10;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 12px;
+        color: var(--neon);
+        opacity: 0.7;
+      }
+
+      #controls label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+
+      #controls input[type=range] { accent-color: var(--neon); width: 140px; }
+      #controls span { color: var(--neon2); }
+
+      /* ── Score popup ───────────────────────────────────────────────────── */
+      .score-popup {
+        position: absolute;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 22px;
+        color: var(--neon2);
+        text-shadow: 0 0 10px var(--neon2);
+        pointer-events: none;
+        z-index: 20;
+        animation: popUp 0.9s forwards;
+      }
+
+      @keyframes popUp {
+        0%   { opacity: 1; transform: translateY(0) scale(1); }
+        100% { opacity: 0; transform: translateY(-60px) scale(1.4); }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- HUD top -->
+    <div id="hud">
+      <div id="topbar">
+        <div class="hud-block">
+          <div class="hud-label">Vitesse</div>
+          <div class="hud-value">
+            <span id="speedValue">0</span><span class="hud-unit"> u/s</span>
+          </div>
+        </div>
+
+        <div class="hud-block">
+          <div id="score-label">SCORE</div>
+          <div id="score-display">0</div>
+        </div>
+
+        <div class="hud-block">
+          <div class="hud-label">Direction</div>
+          <div class="hud-value">
+            <span id="steeringValue">0</span><span class="hud-unit">°</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- High Score (sous le score) -->
+    <div id="highscore-panel">
+      <div id="high-score-label">⭐ Meilleur</div>
+      <div id="high-score-display">0</div>
+    </div>
+
+    <!-- Heartbeat (bas gauche) -->
+    <div id="heart-panel">
+      <div id="heart-label">Rythme cardiaque</div>
+      <div id="heart-icon">❤️</div>
+      <div id="heart-value">--</div>
+      <div id="heart-unit">BPM</div>
+    </div>
+
+    <!-- Malus indicator (droite) -->
+    <div id="malus-bar">
+      <div id="malus-label">Malus actif</div>
+      <div id="malus-icon">💩</div>
+      <div id="malus-progress-wrap">
+        <div id="malus-progress" style="width:100%"></div>
+      </div>
+    </div>
+
+    <!-- Trail bar (bas centre) -->
+    <div id="trail-bar"></div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <label>
+        Speed
+        <input type="range" id="speed" min="-5" max="10" step="0.1" value="0" />
+      </label>
+      <label>
+        Steering
+        <input type="range" id="steering" min="-45" max="45" step="1" value="0" />
+      </label>
+    </div>
+
+    <canvas id="canvas"></canvas>
+    <script>
+      // ── Heartbeat icon animation ──────────────────────────────────────────
+      const heartIcon = document.getElementById("heart-icon");
+      const malusBar  = document.getElementById("malus-bar");
+      const malusProgress = document.getElementById("malus-progress");
+
+      // Observateur pour animer le cœur quand heartRate change
+      let lastHeart = 0;
+      setInterval(() => {
+        // Battement automatique selon BPM
+        const bpm = parseInt(document.getElementById("heart-value").textContent) || 0;
+        if (bpm > 0) {
+          const interval = 60000 / bpm;
+          // On laisse l'animation CSS gérer ça via la classe .beating
+        }
+      }, 100);
+
+      // Patch: on expose une fonction globale appelée depuis app.js
+      window.triggerHeartAnimation = function () {
+        heartIcon.classList.remove("beating");
+        void heartIcon.offsetWidth; // reflow
+        heartIcon.classList.add("beating");
+        heartIcon.addEventListener("animationend", () => {
+          heartIcon.classList.remove("beating");
+        }, { once: true });
+      };
+
+      // Patch malus bar update
+      window.updateMalusUI = function (active, ratio) {
+        if (active) {
+          malusBar.classList.add("active");
+          malusProgress.style.width = `${Math.round(ratio * 100)}%`;
+        } else {
+          malusBar.classList.remove("active");
+          malusProgress.style.width = "100%";
+        }
+      };
+    </script>
+    <script src="app.js"></script>
+  </body>
+</html>
