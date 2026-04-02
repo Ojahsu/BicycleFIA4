@@ -80,6 +80,11 @@ const int interval = 200;
 // ======================================================
 // -------- GESTION LED ---------------------------------
 // ======================================================
+
+const int LED_BLEU = A1;
+const int LED_JAUNE = A2;
+const int LED_ROUGE = A3;
+
 void updateLED() {
   unsigned long now = millis();
 
@@ -223,6 +228,14 @@ void setup() {
   // -------- Bouton reset ----------
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
+  pinMode(LED_BLEU, OUTPUT);
+  pinMode(LED_JAUNE, OUTPUT);
+  pinMode(LED_ROUGE, OUTPUT);
+
+  digitalWrite(LED_BLEU, LOW);
+  digitalWrite(LED_JAUNE, LOW);
+  digitalWrite(LED_ROUGE, LOW);
+
   lastTime = millis();
 
   // Première évaluation de l'état
@@ -276,6 +289,15 @@ void loop() {
   }
 
   // ====================================================
+  // -------- BOUTON RESET ANGLE -----------------------
+  // ====================================================
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    angle = 0;
+    Serial.println(">>> RESET ANGLE <<<");
+    delay(200);
+  }
+
+  // ====================================================
   // -------- ENVOI HEARTBEAT (toutes les 2s) ----------
   // ====================================================
   if (now - lastHeartbeatPublish >= heartbeatInterval) {
@@ -283,19 +305,33 @@ void loop() {
 
     if (max30102Ready) {
       MAX30102.getHeartbeatSPO2();
+      
+      lastTime = millis();
+      
       int heartbeat = MAX30102._sHeartbeatSPO2.Heartbeat;
       String payloadHeart = String(heartbeat);
       client.publish(mqtt_heartbeat, payloadHeart.c_str());
       Serial.println("HEART -> MQTT : " + payloadHeart + " bpm");
-    }
-  }
 
-  // ====================================================
-  // -------- BOUTON RESET ANGLE -----------------------
-  // ====================================================
-  if (digitalRead(BUTTON_PIN) == LOW) {
-    angle = 0;
-    Serial.println(">>> RESET ANGLE <<<");
-    delay(200);
+      // Gestion LEDs
+      if (heartbeat >= 45 && heartbeat <= 85) {
+        digitalWrite(LED_BLEU, HIGH);
+        digitalWrite(LED_JAUNE, LOW);
+        digitalWrite(LED_ROUGE, LOW);
+      } else if (heartbeat > 85 && heartbeat <= 120) {
+        digitalWrite(LED_BLEU, LOW);
+        digitalWrite(LED_JAUNE, HIGH);
+        digitalWrite(LED_ROUGE, LOW);
+      } else if (heartbeat > 120) {
+        digitalWrite(LED_BLEU, LOW);
+        digitalWrite(LED_JAUNE, LOW);
+        digitalWrite(LED_ROUGE, HIGH);
+      } else {
+        // heartbeat < 45 ou invalide
+        digitalWrite(LED_BLEU, LOW);
+        digitalWrite(LED_JAUNE, LOW);
+        digitalWrite(LED_ROUGE, LOW);
+      }
+    }
   }
 }
